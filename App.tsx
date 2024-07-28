@@ -1,118 +1,127 @@
-/**
- * Sample React Native App
- * https://github.com/facebook/react-native
- *
- * @format
- */
+import React, { useState, useRef } from 'react';
+import { View, Text, TextInput, Button, StyleSheet, Alert } from 'react-native';
+import QRCode from 'react-native-qrcode-svg';
+import firebase from '@react-native-firebase/app';
+import firestore from '@react-native-firebase/firestore';
+import storage from '@react-native-firebase/storage';
+import { captureRef } from 'react-native-view-shot';
 
-import React from 'react';
-import type {PropsWithChildren} from 'react';
-import {
-  SafeAreaView,
-  ScrollView,
-  StatusBar,
-  StyleSheet,
-  Text,
-  useColorScheme,
-  View,
-} from 'react-native';
+// Firebase configuration
+const firebaseConfig = {
+  apiKey: 'AIzaSyBtuPDLaq8rAROLCelAthvRzLA0lz3qThU',
+  projectId: 'testqr-f7520',
+  storageBucket: 'testqr-f7520.appspot.com',
+  appId: 'com.qrcode',
+};
 
-import {
-  Colors,
-  DebugInstructions,
-  Header,
-  LearnMoreLinks,
-  ReloadInstructions,
-} from 'react-native/Libraries/NewAppScreen';
-
-type SectionProps = PropsWithChildren<{
-  title: string;
-}>;
-
-function Section({children, title}: SectionProps): React.JSX.Element {
-  const isDarkMode = useColorScheme() === 'dark';
-  return (
-    <View style={styles.sectionContainer}>
-      <Text
-        style={[
-          styles.sectionTitle,
-          {
-            color: isDarkMode ? Colors.white : Colors.black,
-          },
-        ]}>
-        {title}
-      </Text>
-      <Text
-        style={[
-          styles.sectionDescription,
-          {
-            color: isDarkMode ? Colors.light : Colors.dark,
-          },
-        ]}>
-        {children}
-      </Text>
-    </View>
-  );
+if (!firebase.apps.length) {
+  firebase.initializeApp(firebaseConfig);
 }
 
-function App(): React.JSX.Element {
-  const isDarkMode = useColorScheme() === 'dark';
+const AddDevice = ({ route = { params: {} }, navigation }: any) => {
+  const { setDevices } = route.params;
+  const [deviceName, setDeviceName] = useState<string>('');
+  const [deviceRoom, setDeviceRoom] = useState<string>('');
+  const [deviceSpecs, setDeviceSpecs] = useState<string>('');
+  const [qrData, setQRData] = useState<string | null>(null);
+  const qrRef = useRef<View>(null);
 
-  const backgroundStyle = {
-    backgroundColor: isDarkMode ? Colors.darker : Colors.lighter,
+  const handleGenerateQR = async () => {
+    if (deviceName && deviceRoom && deviceSpecs) {
+      const deviceInfoURL = `https://book92.github.io/ListU_AddUser/deviceinfo.html?deviceName=${encodeURIComponent(deviceName)}&deviceRoom=${encodeURIComponent(deviceRoom)}&deviceSpecs=${encodeURIComponent(deviceSpecs)}`;
+      setQRData(deviceInfoURL);
+
+      // Wait for the QR data state to update
+      setTimeout(async () => {
+        if (qrRef.current) {
+          try {
+            const uri = await captureRef(qrRef.current, {
+              format: 'png',
+              quality: 1.0
+            });
+
+            const refImage = storage().ref('/QR/' + Date.now() + '.png');
+            await refImage.putFile(uri);
+            const link = await refImage.getDownloadURL();
+
+            firestore().collection('SERVICES').add({
+              deviceName,
+              deviceRoom,
+              deviceSpecs,
+              image: link
+            })
+            .then(response => {
+              firestore().collection('SERVICES').doc(response.id).update({ id: response.id });
+              Alert.alert('Add new service success');
+              navigation.goBack();
+            })
+            .catch(e => Alert.alert('Add new service fail'));
+          } catch (e) {
+            console.log(e.message);
+            Alert.alert('Error', 'Failed to upload QR code');
+          }
+        }
+      }, 1000);
+    } else {
+      Alert.alert('Error', 'All fields are required to generate QR code');
+    }
   };
 
   return (
-    <SafeAreaView style={backgroundStyle}>
-      <StatusBar
-        barStyle={isDarkMode ? 'light-content' : 'dark-content'}
-        backgroundColor={backgroundStyle.backgroundColor}
+    <View style={styles.container}>
+      <Text style={styles.label}>Device Name</Text>
+      <TextInput
+        style={styles.input}
+        value={deviceName}
+        onChangeText={setDeviceName}
+        placeholder="Enter device name"
       />
-      <ScrollView
-        contentInsetAdjustmentBehavior="automatic"
-        style={backgroundStyle}>
-        <Header />
-        <View
-          style={{
-            backgroundColor: isDarkMode ? Colors.black : Colors.white,
-          }}>
-          <Section title="Step One">
-            Edit <Text style={styles.highlight}>App.tsx</Text> to change this
-            screen and then come back to see your edits.
-          </Section>
-          <Section title="See Your Changes">
-            <ReloadInstructions />
-          </Section>
-          <Section title="Debug">
-            <DebugInstructions />
-          </Section>
-          <Section title="Learn More">
-            Read the docs to discover what to do next:
-          </Section>
-          <LearnMoreLinks />
+      <Text style={styles.label}>Device Room</Text>
+      <TextInput
+        style={styles.input}
+        value={deviceRoom}
+        onChangeText={setDeviceRoom}
+        placeholder="Enter device room"
+      />
+      <Text style={styles.label}>Device Specs</Text>
+      <TextInput
+        style={styles.input}
+        value={deviceSpecs}
+        onChangeText={setDeviceSpecs}
+        placeholder="Enter device specs"
+      />
+      <Button title="Generate QR Code" onPress={handleGenerateQR} />
+      {qrData && (
+        <View style={styles.qrContainer} collapsable={false} ref={qrRef}>
+          <Text>Scan this QR code:</Text>
+          <QRCode value={qrData} size={200} />
         </View>
-      </ScrollView>
-    </SafeAreaView>
+      )}
+    </View>
   );
-}
+};
 
 const styles = StyleSheet.create({
-  sectionContainer: {
-    marginTop: 32,
-    paddingHorizontal: 24,
+  container: {
+    flex: 1,
+    padding: 20,
   },
-  sectionTitle: {
-    fontSize: 24,
-    fontWeight: '600',
-  },
-  sectionDescription: {
-    marginTop: 8,
+  label: {
     fontSize: 18,
-    fontWeight: '400',
+    marginBottom: 10,
   },
-  highlight: {
-    fontWeight: '700',
+  input: {
+    height: 40,
+    borderColor: '#ccc',
+    borderWidth: 1,
+    marginBottom: 20,
+    padding: 10,
+  },
+  qrContainer: {
+    marginTop: 20,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
 });
 
-export default App;
+export default AddDevice;
