@@ -7,90 +7,73 @@
     <style>
         body {
             font-family: Arial, sans-serif;
-            margin: 0;
-            padding: 20px;
-            background-color: #f4f4f9;
+            margin: 20px;
+            padding: 0;
         }
         .container {
             max-width: 800px;
             margin: 0 auto;
-            background: white;
-            padding: 20px;
-            border-radius: 10px;
-            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
         }
         h1 {
-            font-size: 24px;
-            margin-bottom: 10px;
-            color: #333;
+            text-align: center;
+            margin-bottom: 20px;
         }
-        p {
-            font-size: 18px;
-            margin-bottom: 10px;
-            color: #666;
+        .info {
+            margin-bottom: 15px;
         }
-        .specs {
-            margin-top: 20px;
-            border-top: 1px solid #ddd;
-            padding-top: 10px;
-        }
-        .spec {
-            margin-bottom: 5px;
-        }
-        .spec-key {
+        .info label {
             font-weight: bold;
-            color: #444;
+        }
+        .info p {
+            margin: 5px 0;
         }
     </style>
 </head>
 <body>
     <div class="container">
         <h1>Device Information</h1>
-        <p><strong>Name:</strong> <span id="deviceName"></span></p>
-        <p><strong>User:</strong> <span id="deviceUser"></span></p>
-        <p><strong>Room:</strong> <span id="deviceRoom"></span></p>
-        <div class="specs">
-            <h2>Specifications</h2>
-            <div id="deviceSpecs"></div>
+        <div class="info">
+            <label for="deviceName">Device Name:</label>
+            <p id="deviceName"></p>
         </div>
-        <p><strong>Notes:</strong> <span id="deviceNotes"></span></p>
+        <div class="info">
+            <label for="deviceUser">Device User:</label>
+            <p id="deviceUser"></p>
+        </div>
+        <div class="info">
+            <label for="deviceType">Device Type:</label>
+            <p id="deviceType"></p>
+        </div>
+        <div class="info">
+            <label for="deviceSpecs">Device Specifications:</label>
+            <p id="deviceSpecs"></p>
+        </div>
+        <div class="info">
+            <label for="deviceNotes">Device Notes:</label>
+            <p id="deviceNotes"></p>
+        </div>
     </div>
-
     <script>
-        // Function to get query parameters
-        function getQueryParams() {
-            const params = new URLSearchParams(window.location.search);
-            return {
-                deviceName: params.get('deviceName') || 'Unknown',
-                deviceUser: params.get('deviceUser') || 'Unknown',
-                deviceRoom: params.get('deviceRoom') || 'Unknown',
-                deviceSpecs: params.get('deviceSpecs') || '{}',
-                deviceNotes: params.get('deviceNotes') || 'No notes available'
-            };
+        // Get query parameters from URL
+        const urlParams = new URLSearchParams(window.location.search);
+        const deviceName = urlParams.get('deviceName');
+        const deviceUser = urlParams.get('deviceUser');
+        const deviceType = urlParams.get('deviceType');
+        const deviceNotes = urlParams.get('deviceNotes');
+        const deviceSpecs = JSON.parse(decodeURIComponent(urlParams.get('deviceSpecs')) || '{}');
+
+        // Display information
+        document.getElementById('deviceName').textContent = deviceName || 'N/A';
+        document.getElementById('deviceUser').textContent = deviceUser || 'N/A';
+        document.getElementById('deviceType').textContent = deviceType || 'N/A';
+        document.getElementById('deviceNotes').textContent = deviceNotes || 'N/A';
+
+        const specsElement = document.getElementById('deviceSpecs');
+        if (Object.keys(deviceSpecs).length) {
+            specsElement.innerHTML = Object.entries(deviceSpecs).map(([key, value]) => `<strong>${key}:</strong> ${value}`).join('<br>');
+        } else {
+            specsElement.textContent = 'N/A';
         }
-
-        // Function to render device info
-        function renderDeviceInfo() {
-            const { deviceName, deviceUser, deviceRoom, deviceSpecs, deviceNotes } = getQueryParams();
-
-            document.getElementById('deviceName').textContent = deviceName;
-            document.getElementById('deviceUser').textContent = deviceUser;
-            document.getElementById('deviceRoom').textContent = deviceRoom;
-
-            const specsElement = document.getElementById('deviceSpecs');
-            const specs = JSON.parse(deviceSpecs);
-            for (const [key, value] of Object.entries(specs)) {
-                const specDiv = document.createElement('div');
-                specDiv.className = 'spec';
-                specDiv.innerHTML = `<span class="spec-key">${key}:</span> ${value}`;
-                specsElement.appendChild(specDiv);
-            }
-
-            document.getElementById('deviceNotes').textContent = deviceNotes;
-        }
-
-        // Render the device info when the page loads
-        window.onload = renderDeviceInfo;
     </script>
 </body>
 </html>
